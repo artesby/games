@@ -56,7 +56,7 @@ class TurnProtocol implements ProtocolInterface
         
         foreach ($this->server->getGameSubscribedClients($this->data['game']) as $client) {
             $client->send($msg);
-        }
+        }+
         $event = $this->data['event'];
         if ($event == 'mate' || $event = 'stalemate' || $event = 'surrender') {
             $this->server->unlinkGameClients($this->data['game']);
