@@ -29,13 +29,20 @@ class PushServerSocket implements MessageComponentInterface
      *
      * @var array
      */
-    protected $clientToGameIds;
+    protected $clientsInGameId;
+    
+    /**
+     *
+     * @var SplObjectStorage
+     */
+    protected $gameOfClients;
     
     public function __construct()
     {
         $this->clients = new SplObjectStorage();
         $this->clientToUserIds = [];
-        $this->clientToGameIds = [];
+        $this->clientsInGameId = [];
+        $this->gameOfClients = new SplObjectStorage();
     }
     
     public static function setDataToServer($data)
@@ -64,7 +71,7 @@ class PushServerSocket implements MessageComponentInterface
     public function onClose(ConnectionInterface $conn)
     {
         echo sprintf('client %s disconnected' . PHP_EOL, $conn->resourceId);
-       // $this->unlinkClientIdFromGame($conn, $gameId);
+        $this->unlinkClientFromGameId($conn, $this->gameOfClients[$conn]);
         $this->unlinkUserIdFromClient($conn);
         $this->clients->detach($conn);
     }
@@ -111,8 +118,8 @@ class PushServerSocket implements MessageComponentInterface
      */
     public function getGameSubscribedClients($gameId)
     {
-        if (isset($this->clientToGameIds[$gameId])) {
-            return $this->clientToGameIds[$gameId];
+        if (isset($this->clientsInGameId[$gameId])) {
+            return $this->clientsInGameId[$gameId];
         } else {
             return new SplObjectStorage();
         }
@@ -138,12 +145,14 @@ class PushServerSocket implements MessageComponentInterface
     public function linkClientIdToGame(ConnectionInterface $client, $gameId)
     {
         if (isset($this->clientToUserIds[$client->resourceId])) {
-            if (isset($this->clientToGameIds[$gameId])) {
-                $this->clientToGameIds[$gameId]->attach($client);
+            if (isset($this->clientsInGameId[$gameId])) {
+                $this->clientsInGameId[$gameId]->attach($client);
+                $this->gameOfClients[$client]->attach($gameId);
                 return true;
             } else {
-                $this->clientToGameIds[$gameId] = new SplObjectStorage();
+                $this->clientsInGameId[$gameId] = new SplObjectStorage();
                 $this->cleintToGameIds[$gameId]->attach($client);
+                $this->gameOfClients[$client]->attach($gameId);
                 return true;
             }
         } else {
@@ -158,10 +167,11 @@ class PushServerSocket implements MessageComponentInterface
      *
      * @return boolean
      */
-    public function unlinkClientIdFromGame(ConnectionInterface $client, $gameId)
+    public function unlinkClientFromGameId(ConnectionInterface $client, $gameId)
     {
-        if (isset($this->clientToGameIds[$gameId])) {
-            $this->clientToGameIds[$gameId]->detach($client);
+        if (isset($this->clientsInGameId[$gameId])) {
+            $this->clientsInGameId[$gameId]->detach($client);
+            $this->gameOfClients->detach($client);
         }
     }
     
@@ -170,8 +180,12 @@ class PushServerSocket implements MessageComponentInterface
      * @param int $gameId
      */
     public function unlinkGameClients($gameId) {
-        if (isset($this->clientToGameIds[$gameId])) {
-            unset($this->clientToGameIds[$gameId]);
+        if (isset($this->clientsInGameId[$gameId])) {
+            foreach ($this->clientsInGameId[$gameId] as $client) {
+                $this->gameOfClients->detach($client);
+            }
+            unset($this->clientsInGameId[$gameId]);
+            
         }
     }
 }
