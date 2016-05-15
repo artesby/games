@@ -16,10 +16,14 @@ class TurnController extends BaseController
     /**
      * Make turn or not
      *
-     * @return json
+     * @return Response
      */
-    public function turn(TurnRequest $msg)
+    public function turn(Request $msg)
     {
+        if ($msg->ajax()){
+            return response()->json(['this is' => 'ajaxa']);
+        }
+        
         $data = $msg; //json_decode($msg->getContent(), true);
         $user=  Auth::user();
         
